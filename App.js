@@ -20,71 +20,62 @@ import {
   TouchableOpacity
 } from "react-native";
 
-const search = (byRepo, byUser, byIssues, text) => {
+const search = (searchBy, text) => {
+  const URL = "https://api.github.com/search";
   if (byRepo) {
-    return axios.get(`https://api.github.com/search/repositories?q=${text}`);
+    return axios.get(`${URL}/${searchBy}?q=${text}`);
   }
   if (byUser) {
-    return axios.get(`https://api.github.com/search/users?q=${text}`);
+    return axios.get(`${URL}/users?q=${text}`);
   }
   if (byIssues) {
-    return axios.get(`https://api.github.com/search/issues?q=${text}`);
+    return axios.get(`${URL}/issues?q=${text}`);
   }
 };
 
 class App extends React.Component {
   state = {};
+
+  onChangeText = text => {
+    const { searchBy } = this.state;
+    return search(searchBy, text)
+      .then(res => {
+        this.setState({ results: res.data.items });
+        // this.forceUpdate();
+      })
+      .catch(err => console.log({ err }));
+  };
+
+  onPickerValueChange = itemValue => {
+    this.setState({ searchBy: itemValue });
+    this.forceUpdate();
+  };
+
+  onButtonPress = () => {
+    delete this.state.selected;
+    this.setState({ changed: !this.state.changed });
+  };
+
   render() {
-    const { results, selected } = this.state;
+    const { results, selected, searchBy } = this.state;
+    console.log(results);
+
     return React.cloneElement(
       <Fragment>
         <StatusBar barStyle="dark-content" backgroundColor="lime" />
-        <SafeAreaView style={{ flex: 1, backgroundColor: "lime" }}>
-          <View
-            style={{
-              justifyContent: "center",
-              alignItems: "center",
-              backgroundColor: "lime"
-            }}
-          >
-            <Text
-              style={{
-                fontWeight: "bold",
-                fontSize: 35
-              }}
-            >
-              Best Git Repo searcher
-            </Text>
+        <SafeAreaView style={styles.safeArea}>
+          <View style={styles.view}>
+            <Text style={styles.title}>Best Git Repo searcher</Text>
           </View>
           <Text> Search some repositories</Text>
           <TextInput
-            style={{ borderColor: "black", borderWidth: 1 }}
-            onChangeText={text =>
-              search(
-                this.state.searchBy == "repositories",
-                this.state.searchBy == "users",
-                this.state.searchBy == "issues",
-                text
-              )
-                .then(res => {
-                  console.log({ res });
-                  this.state.results = res.data.items;
-                  this.forceUpdate();
-                })
-                .catch(err => console.log({ err }))
-            }
+            style={styles.repositoriesInput}
+            onChangeText={this.onChangeText}
           />
-          {console.log("state", this.state)}
           <Picker
-            selectedValue={this.state.searchBy || "repositories"}
-            style={{
-              height: 150,
-              width: 100
-            }}
-            onValueChange={itemValue => {
-              this.state.searchBy = itemValue;
-              this.forceUpdate();
-            }}
+            selectedValue={searchBy || "repositories"}
+            style={styles.picker}
+            onValueChange={this.onPickerValueChange}
           >
             <Picker.Item
               color="black"
@@ -95,13 +86,7 @@ class App extends React.Component {
             <Picker.Item color="black" label="issues" value="issues" />
           </Picker>
           {Object.keys(selected || {}).length > 0 ? (
-            <View
-              style={{
-                flex: 1,
-                justifyContent: "center",
-                alignItems: "center"
-              }}
-            >
+            <View style={styles.infoBlock}>
               <Text>Details</Text>
               <Text>Score : {selected.score}</Text>
               <Text>
@@ -109,11 +94,8 @@ class App extends React.Component {
               </Text>
               <Text>Full Name : {selected.full_name}</Text>
               <TouchableOpacity
-                onPress={() => {
-                  delete this.state.selected;
-                  this.setState({ changed: !this.state.changed });
-                }}
-                style={{ paddingTop: 50 }}
+                onPress={this.onButtonPress}
+                style={styles.button}
               >
                 <Text>Hide</Text>
               </TouchableOpacity>
@@ -124,25 +106,15 @@ class App extends React.Component {
               style={styles.scrollView}
             >
               {(results || []).map(item => (
-                <View
-                  style={{
-                    backgroundColor: "aquamarine",
-                    borderBottomColor: "black",
-                    borderBottomWidth: 1
-                  }}
-                >
+                <View style={styles.result}>
                   <Text>{item.name}</Text>
                   <TouchableOpacity
                     onPress={() => {
-                      this.state.selected = item;
+                      this.setState({ selected: item });
                       this.forceUpdate();
                     }}
                   >
-                    <Text
-                      style={{ textDecorationLine: "underline", color: "blue" }}
-                    >
-                      {item.url}
-                    </Text>
+                    <Text style={styles.itemUrl}>{item.url}</Text>
                   </TouchableOpacity>
                 </View>
               ))}
@@ -157,6 +129,48 @@ class App extends React.Component {
 const styles = StyleSheet.create({
   scrollView: {
     backgroundColor: "#fff"
+  },
+  itemUrl: {
+    textDecorationLine: "underline",
+    color: "blue"
+  },
+  result: {
+    backgroundColor: "aquamarine",
+    borderBottomColor: "black",
+    borderBottomWidth: 1
+  },
+  safeArea: {
+    flex: 1,
+    backgroundColor: "lime"
+  },
+  view: {
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "lime"
+  },
+  picker: {
+    height: 150,
+    width: 100
+  },
+  title: {
+    fontWeight: "bold",
+    fontSize: 35
+  },
+  button: {
+    paddingTop: 50
+  },
+  input: {
+    borderColor: "black",
+    borderWidth: 1
+  },
+  repositoriesInput: {
+    borderColor: "black",
+    borderWidth: 1
+  },
+  infoBlock: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center"
   }
 });
 
